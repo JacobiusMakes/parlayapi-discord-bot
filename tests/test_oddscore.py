@@ -30,6 +30,17 @@ class TestAmericanToDecimal(unittest.TestCase):
         with self.assertRaises(ValueError):
             oc.american_to_decimal(float("inf"))
 
+    def test_sub_100_magnitudes_do_not_exist(self):
+        # Mirrors the site calculator's self-test: a2d(+50), a2d(-99),
+        # and a2d(0) are all NaN there, because American prices between
+        # -100 and +100 (exclusive) do not exist. +100 and -100 are the
+        # boundary and stay valid.
+        for bad in (50, -99, 99, -1):
+            with self.assertRaises(ValueError, msg=bad):
+                oc.american_to_decimal(bad)
+        self.assertAlmostEqual(oc.american_to_decimal(-100), 2.0)
+        self.assertAlmostEqual(oc.american_to_decimal(100), 2.0)
+
 
 class TestCalculatorVectors(unittest.TestCase):
     """The seven vectors from the site calculator's self-test."""
@@ -135,9 +146,13 @@ class TestParsePrices(unittest.TestCase):
                          [-110, -110, 150])
 
     def test_rejects_junk(self):
-        for bad in ("", "abc", "-110, x", "0", "-110, 0"):
+        for bad in ("", "abc", "-110, x", "0", "-110, 0",
+                    "50", "-99", "-110, +50"):
             with self.assertRaises(ValueError, msg=bad):
                 oc.parse_american_prices(bad)
+
+    def test_boundary_100_accepted(self):
+        self.assertEqual(oc.parse_american_prices("+100, -100"), [100, -100])
 
     def test_max_legs(self):
         ok = ",".join(["-110"] * oc.MAX_PARLAY_LEGS)

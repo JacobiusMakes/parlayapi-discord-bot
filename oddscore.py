@@ -82,14 +82,16 @@ def js_round(x: float) -> int:
 def american_to_decimal(american) -> float:
     """American odds to decimal odds.
 
-    Positive A: A/100 + 1. Negative A: 100/|A| + 1. Zero or
-    non-numeric input raises ValueError.
+    Positive A: A/100 + 1. Negative A: 100/|A| + 1. American prices
+    between -100 and +100 (exclusive) do not exist, so any magnitude
+    under 100 (including zero) raises ValueError, exactly like the
+    site calculator's americanToDecimal returning NaN.
     """
     try:
         a = float(american)
     except (TypeError, ValueError):
         raise ValueError("not a number: %r" % (american,))
-    if not math.isfinite(a) or a == 0:
+    if not math.isfinite(a) or abs(a) < 100:
         raise ValueError("invalid American odds: %r" % (american,))
     return (a / 100.0) + 1.0 if a > 0 else (100.0 / abs(a)) + 1.0
 
@@ -154,8 +156,10 @@ def parse_american_prices(text: str) -> list:
             v = int(t)
         except ValueError:
             raise ValueError("Not an American price: %r. Example: -110, -110, +150" % tok)
-        if v == 0:
-            raise ValueError("0 is not a valid American price.")
+        if abs(v) < 100:
+            raise ValueError(
+                "%s is not a valid American price: magnitudes below 100 "
+                "do not exist. Example: -110, -110, +150" % tok)
         prices.append(v)
     return prices
 
